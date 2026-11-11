@@ -1,0 +1,262 @@
+{
+  "info": {
+    "name": "Exercise 16 - FirstRestAPI - Final CRUD",
+    "description": "Run all requests in order. Creates one product, verifies CRUD and missing-resource handling, then deletes its test product. Uses the local application on port 8080.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "productId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Create product",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/products",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"First product\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set(\"productId\", String(pm.response.json().id));",
+              "pm.test(\"Generated ID and name\", () => { const p = pm.response.json(); pm.expect(p.id).to.be.a(\"number\"); pm.expect(p.name).to.eql(\"First product\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Find created product",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/products/{{productId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Correct product\", () => { const p = pm.response.json(); pm.expect(String(p.id)).to.eql(pm.collectionVariables.get(\"productId\")); pm.expect(p.name).to.eql(\"First product\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Update product",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/api/v1/products/{{productId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Updated product\",\n  \"id\": {{productId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Name updated without changing ID\", () => { const p = pm.response.json(); pm.expect(p.name).to.eql(\"Updated product\"); pm.expect(String(p.id)).to.eql(pm.collectionVariables.get(\"productId\")); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Verify saved update",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/products/{{productId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Updated name persisted\", () => pm.expect(pm.response.json().name).to.eql(\"Updated product\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 List all products",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/products",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"List includes updated product\", () => { const products = pm.response.json(); pm.expect(products).to.be.an(\"array\"); pm.expect(products.some(p => String(p.id) === pm.collectionVariables.get(\"productId\") && p.name === \"Updated product\")).to.be.true; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Delete product",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/v1/products/{{productId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 204\", () => pm.response.to.have.status(204));",
+              "pm.test(\"No response body\", () => pm.expect(pm.response.text()).to.eql(\"\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Deleted product returns 404",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/products/{{productId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Clear error message\", () => pm.expect(pm.response.json().message).to.eql(\"Product with \" + pm.collectionVariables.get(\"productId\") + \" not found\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Update missing product returns 404",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/api/v1/products/{{productId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Missing\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Clear error message\", () => pm.expect(pm.response.json().message).to.eql(\"Product with \" + pm.collectionVariables.get(\"productId\") + \" not found\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Delete missing product returns 404",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/v1/products/{{productId}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Clear error message\", () => pm.expect(pm.response.json().message).to.eql(\"Product with \" + pm.collectionVariables.get(\"productId\") + \" not found\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 OpenAPI documentation",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/v3/api-docs",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"All CRUD routes documented\", () => { const p = pm.response.json().paths; pm.expect(p[\"/api/v1/products\"].post.responses).to.have.property(\"201\"); pm.expect(p[\"/api/v1/products\"].get).to.exist; pm.expect(p[\"/api/v1/products/{id}\"].get).to.exist; pm.expect(p[\"/api/v1/products/{id}\"].put).to.exist; pm.expect(p[\"/api/v1/products/{id}\"].delete.responses).to.have.property(\"204\"); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
